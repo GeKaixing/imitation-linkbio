@@ -5,7 +5,7 @@ import { useUser } from "@/store/UserStore";
 
 function Preview({ value, children }: { value: any; children: React.ReactNode }) {
   const { isPreview } = usePreview();
-  return isPreview || !!value ? <>{children}</> : null;
+  return !isPreview || !!value ? <>{children}</> : null;
 }
 
 function EditableInput({ name, value, onChange, placeholder, className = "" }) {

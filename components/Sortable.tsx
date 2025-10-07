@@ -22,6 +22,7 @@ import { useLinkData, useLinkDataDispatch } from '@/store/LinkStore'
 import SpinnerSurface from "./SpinnerSurface";
 import IsPreview from "./IsPreview";
 // 🧩 主组件
+
 export function Sortable() {
     const [activeId, setActiveId] = useState(null);
     const { linkData } = useLinkData();
@@ -32,26 +33,64 @@ export function Sortable() {
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 
+    // 初次加载时根据 order 排序
     useEffect(() => {
-        setItems(linkData)
-    }, [linkData])
-    // 开始拖拽
+        if (linkData && Array.isArray(linkData)) {
+            const sorted = [...linkData].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+            setItems(sorted);
+        }
+    }, [linkData]);
+
+    // 拖拽开始
     const handleDragStart = (event) => {
         setActiveId(event.active.id);
     };
 
-    // 拖拽结束
-    const handleDragEnd = (event) => {
+    // 拖拽结束 + 乐观更新
+    const handleDragEnd = async (event) => {
         const { active, over } = event;
         if (!over || active.id === over.id) {
             setActiveId(null);
             return;
         }
-        setItems((items) => {
-            const oldIndex = items.findIndex((i) => i.id === active.id);
-            const newIndex = items.findIndex((i) => i.id === over.id);
-            return arrayMove(items, oldIndex, newIndex);
-        });
+
+        const activeIndex = items.findIndex((i) => i.id === active.id);
+        const overIndex = items.findIndex((i) => i.id === over.id);
+
+        // 克隆当前数据（用于失败时回滚）
+        const prevItems = [...items];
+
+        // 克隆数组避免直接修改 state
+        const newItems = [...items];
+
+        // 交换 order 值
+        const tempOrder = newItems[activeIndex].order;
+        newItems[activeIndex].order = newItems[overIndex].order;
+        newItems[overIndex].order = tempOrder;
+
+        // 重新排序以立即反映到界面（乐观更新）
+        const reordered = arrayMove(newItems, activeIndex, overIndex);
+        setItems(reordered);
+
+        // 乐观同步后端
+        try {
+            const res = await fetch("/api/link-data", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify([
+                    { id: newItems[activeIndex].id, order: newItems[activeIndex].order },
+                    { id: newItems[overIndex].id, order: newItems[overIndex].order },
+                ]),
+            });
+
+            if (!res.ok) throw new Error("同步失败");
+
+            // ✅ 成功则无需额外操作
+        } catch (err) {
+            console.error("❌ 同步失败，回滚：", err);
+            setItems(prevItems); // 回滚 UI
+        }
+
         setActiveId(null);
     };
 
@@ -63,14 +102,14 @@ export function Sortable() {
             onDragEnd={handleDragEnd}
         >
             <SortableContext items={items.map((i) => i.id)} strategy={rectSortingStrategy}>
-                <div className="flex flex-wrap gap-4  w-[416px]">
+                <div className="flex flex-wrap gap-4 w-[416px]">
                     {items.map((item) => (
                         <SortableItem key={item.id} item={item} />
                     ))}
                 </div>
             </SortableContext>
 
-            {/* 拖拽时的悬浮影子 */}
+            {/* 拖拽悬浮阴影 */}
             <DragOverlay adjustScale={false}>
                 {activeId ? (
                     <OverlayItem item={items.find((i) => i.id === activeId)} />
@@ -79,6 +118,7 @@ export function Sortable() {
         </DndContext>
     );
 }
+
 
 // 🧱 单个可拖拽元素
 function SortableItem({ item }) {
@@ -280,12 +320,12 @@ function ItemContent({ item }) {
                             <SpinnerSurface loading={loading} submitting={submitting}>
                                 <div className="flex  items-center rounded-2xl  bg-[#23262c] w-[416px] h-[200px] p-2 relative group">
                                     <div className="flex flex-col flex-1 gap-2  items-start">
-                                        <div className=" w-8 h-8">
+                                        <div className=" w-8 h-8 flex-1">
                                             <svg width="32" height="32" viewBox="0 0 33 32" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M29.4613 17.0032C29.6421 14.7071 29.2071 12.4044 28.2013 10.3325C26.5365 11.9143 24.5685 13.1426 22.416 13.9432C22.5891 16.0676 22.4932 18.2054 22.1307 20.3058C24.75 19.6461 27.2318 18.528 29.4613 17.0032ZM20.012 20.7338C20.4379 18.6978 20.5868 16.6137 20.4547 14.5378C19.1853 14.8405 17.8613 15.0005 16.5 15.0005C15.1387 15.0005 13.8147 14.8405 12.5453 14.5378C12.4163 16.6137 12.5652 18.6974 12.988 20.7338C15.3158 21.0906 17.6843 21.0906 20.012 20.7338ZM13.5293 22.8258C15.5029 23.0593 17.4971 23.0593 19.4707 22.8258C18.7924 25.0093 17.7911 27.0789 16.5 28.9658C15.2089 27.0789 14.2076 25.0093 13.5293 22.8258ZM10.8693 20.3072C10.5049 18.206 10.409 16.0671 10.584 13.9418C8.43105 13.1415 6.46257 11.9132 4.79734 10.3312C3.79176 12.4036 3.35727 14.7068 3.53868 17.0032C5.7682 18.528 8.25004 19.6475 10.8693 20.3072ZM28.9747 19.6698C28.3015 21.9511 27.0163 24.0043 25.2585 25.6067C23.5008 27.2091 21.3377 28.2994 19.004 28.7592C20.1727 26.7942 21.0647 24.6773 21.6547 22.4685C24.2273 21.9293 26.6981 20.9851 28.9747 19.6712V19.6698ZM4.02534 19.6698C6.26801 20.9645 8.73201 21.9205 11.3453 22.4685C11.9354 24.6773 12.8273 26.7942 13.996 28.7592C11.6625 28.2995 9.49953 27.2094 7.7418 25.6073C5.98407 24.0051 4.69874 21.9522 4.02534 19.6712V19.6698ZM19.004 3.24049C22.3076 3.88983 25.2308 5.79493 27.1587 8.55516C25.7356 9.99299 24.0367 11.1286 22.164 11.8938C21.6594 8.83758 20.5877 5.90267 19.004 3.24049ZM16.5 3.03516C18.4459 5.87795 19.7244 9.12364 20.24 12.5298C19.044 12.8365 17.7907 13.0005 16.5 13.0005C15.2093 13.0005 13.956 12.8378 12.76 12.5298C13.2756 9.12363 14.5541 5.87793 16.5 3.03516ZM13.996 3.24049C12.4123 5.90266 11.3406 8.83757 10.836 11.8938C8.96329 11.1286 7.26443 9.99302 5.84134 8.55516C7.76939 5.79533 10.6925 3.88937 13.996 3.24049Z" fill="url(#paint0_linear_1779_5696)"></path><defs><linearGradient id="paint0_linear_1779_5696" x1="15.8333" y1="2.66536" x2="15.8333" y2="31.332" gradientUnits="userSpaceOnUse"><stop stopColor="#0091F0"></stop><stop offset="1" stopColor="#23262C"></stop></linearGradient></defs></svg>
 
                                         </div>
-                                        <div className="text-sm font-semibold text-blue-800 mb-2">🔗 Link lorem</div>
-                                        <div className="mt-4 h-[38px] w-[90%] md:w-[80%] mx-auto">
+                                        <div className="text-sm font-semibold text-blue-800 mb-2 flex-1">🔗 Link lorem</div>
+                                        <div className="mt-4 h-[38px] w-[90%] md:w-[80%] mx-auto flex-1">
                                             <input
                                                 className="rounded-lg bg-transparent transition-all duration-200 ease-in-out disabled:cursor-not-allowed disabled:opacity-50 text-center cursor-pointer outline-none font-bold text-sm py-2 border-2 border-secondary px-3 w-full max-w-[150px] text-light hover:bg-dark hover:text-lighter focus:text-lighter focus:bg-dark focus:border-primary"
                                                 placeholder="Add Button"
@@ -305,12 +345,12 @@ function ItemContent({ item }) {
                         return (
                             <SpinnerSurface loading={loading} submitting={submitting}>
                                 <div className="flex flex-col  rounded-2xl items-start bg-[#23262c] w-[192px] h-[200px] p-2 relative group">
-                                    <div className=" w-8 h-8">
+                                    <div className=" w-8 h-8 flex-1">
                                         <svg width="32" height="32" viewBox="0 0 33 32" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M29.4613 17.0032C29.6421 14.7071 29.2071 12.4044 28.2013 10.3325C26.5365 11.9143 24.5685 13.1426 22.416 13.9432C22.5891 16.0676 22.4932 18.2054 22.1307 20.3058C24.75 19.6461 27.2318 18.528 29.4613 17.0032ZM20.012 20.7338C20.4379 18.6978 20.5868 16.6137 20.4547 14.5378C19.1853 14.8405 17.8613 15.0005 16.5 15.0005C15.1387 15.0005 13.8147 14.8405 12.5453 14.5378C12.4163 16.6137 12.5652 18.6974 12.988 20.7338C15.3158 21.0906 17.6843 21.0906 20.012 20.7338ZM13.5293 22.8258C15.5029 23.0593 17.4971 23.0593 19.4707 22.8258C18.7924 25.0093 17.7911 27.0789 16.5 28.9658C15.2089 27.0789 14.2076 25.0093 13.5293 22.8258ZM10.8693 20.3072C10.5049 18.206 10.409 16.0671 10.584 13.9418C8.43105 13.1415 6.46257 11.9132 4.79734 10.3312C3.79176 12.4036 3.35727 14.7068 3.53868 17.0032C5.7682 18.528 8.25004 19.6475 10.8693 20.3072ZM28.9747 19.6698C28.3015 21.9511 27.0163 24.0043 25.2585 25.6067C23.5008 27.2091 21.3377 28.2994 19.004 28.7592C20.1727 26.7942 21.0647 24.6773 21.6547 22.4685C24.2273 21.9293 26.6981 20.9851 28.9747 19.6712V19.6698ZM4.02534 19.6698C6.26801 20.9645 8.73201 21.9205 11.3453 22.4685C11.9354 24.6773 12.8273 26.7942 13.996 28.7592C11.6625 28.2995 9.49953 27.2094 7.7418 25.6073C5.98407 24.0051 4.69874 21.9522 4.02534 19.6712V19.6698ZM19.004 3.24049C22.3076 3.88983 25.2308 5.79493 27.1587 8.55516C25.7356 9.99299 24.0367 11.1286 22.164 11.8938C21.6594 8.83758 20.5877 5.90267 19.004 3.24049ZM16.5 3.03516C18.4459 5.87795 19.7244 9.12364 20.24 12.5298C19.044 12.8365 17.7907 13.0005 16.5 13.0005C15.2093 13.0005 13.956 12.8378 12.76 12.5298C13.2756 9.12363 14.5541 5.87793 16.5 3.03516ZM13.996 3.24049C12.4123 5.90266 11.3406 8.83757 10.836 11.8938C8.96329 11.1286 7.26443 9.99302 5.84134 8.55516C7.76939 5.79533 10.6925 3.88937 13.996 3.24049Z" fill="url(#paint0_linear_1779_5696)"></path><defs><linearGradient id="paint0_linear_1779_5696" x1="15.8333" y1="2.66536" x2="15.8333" y2="31.332" gradientUnits="userSpaceOnUse"><stop stopColor="#0091F0"></stop><stop offset="1" stopColor="#23262C"></stop></linearGradient></defs></svg>
 
                                     </div>
-                                    <div className="text-sm font-semibold text-blue-800 mb-2">🔗 Link</div>
-                                    <div className="mt-4 h-[38px] w-[90%] md:w-[80%] mx-auto">
+                                    <div className="text-sm font-semibold text-blue-800 mb-2 flex-1">🔗 Link</div>
+                                    <div className="mt-4 h-[38px] w-[90%] md:w-[80%] mx-auto flex-1">
                                         <input
                                             className="rounded-lg bg-transparent transition-all duration-200 ease-in-out disabled:cursor-not-allowed disabled:opacity-50 text-center cursor-pointer outline-none font-bold text-sm py-2 border-2 border-secondary px-3 w-full max-w-[150px] text-light hover:bg-dark hover:text-lighter focus:text-lighter focus:bg-dark focus:border-primary"
                                             placeholder="Add Button"

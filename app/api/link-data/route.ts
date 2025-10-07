@@ -46,28 +46,49 @@ export async function POST(request) {
   }
 }
 
-// ✅ PUT: 更新并返回更新后的数据
+
 export async function PUT(request) {
   try {
     const body = await request.json();
-    const { id } = body;
-    console.log(id)
-    if (!id) {
-      return Response.json({ error: '缺少 ID' }, { status: 400 });
-    }
 
     const data = readData();
-    const index = data.findIndex(item => item.id === id);
-    if (index === -1) {
-      return Response.json({ error: '未找到该 ID' }, { status: 404 });
+
+    // ✅ 判断是批量更新（数组）还是单条更新（对象）
+    if (Array.isArray(body)) {
+      let updated = [];
+      body.forEach(updateItem => {
+        const index = data.findIndex(item => item.id === updateItem.id);
+        if (index !== -1) {
+          data[index] = { ...data[index], ...updateItem };
+          updated.push(data[index]);
+        }
+      });
+
+      writeData(data);
+      return Response.json({
+        message: "批量更新成功",
+        updated,
+      });
+    } else {
+      // ✅ 单条更新逻辑（保持原功能）
+      const { id } = body;
+      if (!id) {
+        return Response.json({ error: "缺少 ID" }, { status: 400 });
+      }
+
+      const index = data.findIndex(item => item.id === id);
+      if (index === -1) {
+        return Response.json({ error: "未找到该 ID" }, { status: 404 });
+      }
+
+      data[index] = { ...data[index], ...body };
+      writeData(data);
+
+      return Response.json(data[index]);
     }
-
-    data[index] = { ...data[index], ...body }; // 合并更新
-    writeData(data);
-
-    return Response.json(data[index]); // ✅ 返回更新后的完整对象
   } catch (error) {
-    return Response.json({ error: '更新失败' }, { status: 500 });
+    console.error(error);
+    return Response.json({ error: "更新失败" }, { status: 500 });
   }
 }
 

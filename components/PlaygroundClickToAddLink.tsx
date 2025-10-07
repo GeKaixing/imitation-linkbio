@@ -11,7 +11,7 @@ export default function PlaygroundClickToAddLink() {
   return (
     <IsPreview>
       <div className="w-full">
-        <div className="h-auto mb-[20px] mx-1">
+        <div className="h-[196px] mb-[20px] mx-1">
           <div
             className="cursor-pointer rounded-[18px] border-2 border-secondary w-full h-[200px] hover:bg-dark transition-all duration-200 ease-in-out"
           >
