@@ -12,24 +12,50 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "缺少邮箱或密码" }, { status: 400 });
     }
 
+    // 1️⃣ 读取数据库文件
     const fileData = await fs.readFile(DB_PATH, "utf-8");
     const users = JSON.parse(fileData);
 
-    const existingUser = users.find((u: any) => u["user-email"] === email);
+    // 2️⃣ 检查是否已注册
+    const existingUser = users.find((u: any) => u.user_email === email);
     if (existingUser) {
       return NextResponse.json({ error: "该邮箱已注册" }, { status: 409 });
     }
 
+    // 3️⃣ 调用 Umami API 创建网站
+    const umamiRes = await fetch(`${process.env.UMAMI_API_URL}/websites`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.UMAMI_API_TOKEN}`,
+      },
+      body: JSON.stringify({
+        name: `${email}-site`,
+        domain: `${email.split("@")[0]}.yourapp.com`, // 你可以自定义
+      }),
+    });
+
+    if (!umamiRes.ok) {
+      const errText = await umamiRes.text();
+      console.error("Umami 创建网站失败:", errText);
+      return NextResponse.json({ error: "Umami 创建网站失败" }, { status: 500 });
+    }
+
+    const { website_id } = await umamiRes.json();
+
+    // 4️⃣ 创建新用户
     const newUser = {
-      "user-id": users.length > 0 ? users[users.length - 1]["user-id"] + 1 : 1,
-      "user-email": email,
-      "user-password": password,
+      "user_id": users.length > 0 ? users[users.length - 1]["user_id"] + 1 : 1,
+      "user_email": email,
+      "user_password": password,
+      "user_website_id": website_id, // 👈 保存 Umami 网站 ID
     };
 
     users.push(newUser);
     await fs.writeFile(DB_PATH, JSON.stringify(users, null, 2), "utf-8");
 
-    const { ["user-password"]: _, ...safeUser } = newUser;
+    // 5️⃣ 返回安全信息
+    const { user_password: _, ...safeUser } = newUser;
     return NextResponse.json({
       message: "注册成功",
       user: safeUser,

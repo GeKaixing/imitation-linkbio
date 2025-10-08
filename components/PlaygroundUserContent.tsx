@@ -94,7 +94,7 @@ export default function PlaygroundUserContent() {
       </div>
 
       {/* Name, Title, Bio */}
-      <div className="text-center mt-4 mb-8 md:mb-11 w-full">
+      <div className="text-center my-4  w-full">
         <Preview value={formData.name}>
           <EditableInput
             name="name"

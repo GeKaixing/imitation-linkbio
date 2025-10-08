@@ -1,7 +1,7 @@
 "use client";
 
 import PlaygroundClickToAddLink from "@/components/PlaygroundClickToAddLink";
-import { Sortable } from "@/components/Sortable";
+import { PlaygroundSortable } from "@/components/PlaygroundSortable";
 import { LinkDataProvider } from "@/store/LinkStore";
 import PreviewProvider from "@/store/PreviewStore";
 import PlaygroundHeader from "@/components/PlaygroundHeader";
@@ -39,7 +39,7 @@ export default function Home() {
                                             {/* Content Addition Area */}
                                             <PlaygroundClickToAddLink></PlaygroundClickToAddLink>
                                             {/* Grid Layout */}
-                                            <Sortable ></Sortable>
+                                            <PlaygroundSortable ></PlaygroundSortable>
                                         </div>
                                     </form>
                                 </div>

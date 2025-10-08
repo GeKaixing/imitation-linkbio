@@ -28,9 +28,5 @@ export default function PlaygroundClickToAddLink() {
         </div>
       </div>
     </IsPreview>
-
-
-
-
   )
 }

@@ -119,7 +119,12 @@ export function AddLinkModal({
                                         link: linkInput,
                                         type: 'link',
                                         size: 'normal',
-                                        authorId: localStorage.getItem('user_id')
+                                        domain: 'test',
+                                        authorId: localStorage.getItem('user_id'),
+                                        button:{
+                                            text:'',
+                                            link:""
+                                        }
                                     }
 
                                 )

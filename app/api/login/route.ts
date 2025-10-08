@@ -40,35 +40,55 @@ export async function POST(request: Request) {
   }
 }
 
-
 export async function GET(request: Request) {
   try {
     // ✅ 从 URL 获取查询参数 ?user-id=1
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("user_id");
-
-    if (!userId) {
-      return NextResponse.json({ error: "缺少 user_id 参数" }, { status: 400 });
-    }
-
+    const user_domain = searchParams.get("user_domain");
     // ✅ 读取 JSON 文件
     const fileData = await fs.readFile(DB_PATH, "utf-8");
     const users = JSON.parse(fileData);
 
-    // ✅ 查找用户
-    const user = users.find((u: any) => u.user_id?.toString() === userId);
+    if (userId) {
+      // ✅ 查找用户
+      const user = users.find((u: any) => u.user_id?.toString() === userId);
 
-    if (!user) {
-      return NextResponse.json({ error: "用户不存在" }, { status: 404 });
+      if (!user) {
+        return NextResponse.json({ error: "用户不存在" }, { status: 404 });
+      }
+
+      // ✅ 隐藏密码
+      const { user_password: _, ...safeUser } = user;
+
+      return NextResponse.json({
+        message: "获取成功",
+        user: safeUser,
+      });
+    } else if (user_domain) {
+      // ✅ 查找用户
+      const user = users.find(
+        (u: any) => u.user_domain?.toString() === user_domain
+      );
+
+      if (!user) {
+        return NextResponse.json({ error: "用户不存在" }, { status: 404 });
+      }
+
+      // ✅ 隐藏密码
+      const { user_password: _, ...safeUser } = user;
+
+      return NextResponse.json({
+        message: "获取成功",
+        user: safeUser,
+      });
     }
 
-    // ✅ 隐藏密码
-    const { user_password: _, ...safeUser } = user;
-
-    return NextResponse.json({
-      message: "获取成功",
-      user: safeUser,
-    });
+    return NextResponse.json(
+      { error: "缺少 user_id&user_domain 参数" },
+      { status: 400 }
+    );
+    
   } catch (error) {
     console.error("Get User Error:", error);
     return NextResponse.json({ error: "服务器内部错误" }, { status: 500 });

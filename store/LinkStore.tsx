@@ -6,7 +6,7 @@ const LinkDataDispatchContext = createContext()
 
 const initialState = {
   linkData: [],
-  id:'',
+  id: '',
   loading: true, // 页面首次加载
   submitting: false, // 提交数据时的 loading（新增字段）
   error: null,
@@ -22,13 +22,17 @@ function linkDataReducer(state, action) {
       return { ...state, loading: action.payload }
 
     case 'SET_SUBMITTING':
-      return { ...state, submitting: action.payload.submitting,id:action.payload.id }
+      return { ...state, submitting: action.payload.submitting, id: action.payload.id }
 
-    case 'ADD_LINK_OPTIMISTIC':
-      return {
-        ...state,
-        linkData: [action.payload, ...state.linkData],
-      }
+  case 'ADD_LINK_OPTIMISTIC': {
+  return {
+    ...state,
+    linkData: [
+      ...state.linkData,       // 保留旧数据
+      { ...action.payload },   // 新增项
+    ],
+  };
+}
 
     case 'ADD_LINK_ROLLBACK':
       return {
@@ -85,7 +89,7 @@ export function LinkDataProvider({ children }) {
       const tempId = `temp-${Date.now()}`
       const optimisticItem = { ...link, tempId }
       dispatch({ type: 'ADD_LINK_OPTIMISTIC', payload: optimisticItem })
-      dispatch({ type: 'SET_SUBMITTING', payload: true,})
+      dispatch({ type: 'SET_SUBMITTING', payload: true, })
 
       try {
         const res = await fetch('/api/link-data', {
@@ -95,6 +99,7 @@ export function LinkDataProvider({ children }) {
         })
         if (!res.ok) throw new Error('Add failed')
         const saved = await res.json()
+
         dispatch({
           type: 'UPDATE_LINK_OPTIMISTIC',
           payload: { ...saved, id: saved.id },
