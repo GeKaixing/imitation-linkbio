@@ -11,6 +11,7 @@ import Link from "next/link";
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [domain, setDomain] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -23,7 +24,7 @@ export default function RegisterPage() {
       const res = await fetch("/api/registe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, domain }),
       });
 
       const data = await res.json();
@@ -114,6 +115,26 @@ export default function RegisterPage() {
                 />
               </div>
             </div>
+            {/* domain */}
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-gray-300">
+                domain
+              </Label>
+              <div className="relative">
+
+                <div className="absolute left-3 top-1.5 h-4 w-4 text-gray-400" >
+                  Linkie.bio/
+                </div>
+                <Input
+                  id="domain"
+                  value={domain}
+                  onChange={(e) => setDomain(e.target.value)}
+                  placeholder="Enter your domain"
+                  type="text"
+                  className="pl-20 bg-[#1a1b1e] border-[#2a2b2f] text-gray-200 placeholder:text-gray-500"
+                />  
+              </div>
+            </div>
 
             {/* Submit Button */}
             <Button
@@ -127,11 +148,10 @@ export default function RegisterPage() {
             {/* Message */}
             {message && (
               <p
-                className={`text-sm text-center mt-3 ${
-                  message.startsWith("✅")
-                    ? "text-green-400"
-                    : "text-red-400"
-                }`}
+                className={`text-sm text-center mt-3 ${message.startsWith("✅")
+                  ? "text-green-400"
+                  : "text-red-400"
+                  }`}
               >
                 {message}
               </p>

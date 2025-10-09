@@ -6,10 +6,10 @@ const DB_PATH = path.join(process.cwd(), "data", "UserData.json");
 
 export async function POST(request: Request) {
   try {
-    const { email, password } = await request.json();
+    const { email, password,domain } = await request.json();
 
-    if (!email || !password) {
-      return NextResponse.json({ error: "缺少邮箱或密码" }, { status: 400 });
+    if (!email || !password||!domain) {
+      return NextResponse.json({ error: "缺少邮箱或密码或域名" }, { status: 400 });
     }
 
     // 1️⃣ 读取数据库文件
@@ -18,8 +18,12 @@ export async function POST(request: Request) {
 
     // 2️⃣ 检查是否已注册
     const existingUser = users.find((u: any) => u.user_email === email);
+    const existingUser2 = users.find((u: any) => u.user_domain === domain);
     if (existingUser) {
       return NextResponse.json({ error: "该邮箱已注册" }, { status: 409 });
+    }
+    if (existingUser2) {
+      return NextResponse.json({ error: "该域名已注册" }, { status: 409 });
     }
 
     // 3️⃣ 调用 Umami API 创建网站
@@ -49,6 +53,7 @@ export async function POST(request: Request) {
       "user_email": email,
       "user_password": password,
       "user_website_id": website_id, // 👈 保存 Umami 网站 ID
+      "user_domain":domain,
     };
 
     users.push(newUser);

@@ -3,15 +3,17 @@ import React from 'react'
 import { ComboboxDemo } from './Combobox'
 import { usePreview } from '@/store/PreviewStore'
 import Link from 'next/link'
+import { useUser } from '@/store/UserStore'
 
 export default function PlaygroundHeader() {
     const { isPreview, setIsPreview } = usePreview()
+    const data = useUser()
     return (
         <div className="flex items-center justify-between flex-col md:flex-row py-4 md:py-8 px-4 md:px-24 z-50">
             <div className="relative inline-block text-left">
                 <button className="inline-flex w-full justify-center gap-x-2 text-sm font-semibold">
                     <p className="text-light font-bold cursor-pointer">
-                        linkie.bio/<span className="text-white"></span>
+                        linkie.bio/<span className="text-white">{data.user_domain}</span>
                     </p>
                     <ComboboxDemo></ComboboxDemo>
                 </button>
@@ -23,7 +25,7 @@ export default function PlaygroundHeader() {
                     onClick={() => setIsPreview(!isPreview)}
                     className="flex w-full justify-center rounded-lg px-3 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:bg-secondary transition-all duration-200 ease-in-out border border-secondary bg-transparent hover:bg-secondary text-light"
                 >
-                    {isPreview ?  'Edit':'Preview' }
+                    {isPreview ? 'Edit' : 'Preview'}
                 </button>
                 <button
                     type="button"
